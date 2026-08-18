@@ -33,6 +33,16 @@ NUMBER_WORDS = {
 }
 
 
+def looks_like_menu_question(message: str) -> bool:
+    """Detect if the customer is asking about the menu or prices — if so,
+    we'll inject the REAL menu directly into context, so the model physically
+    cannot hallucinate fake items or prices instead of calling the tool."""
+    msg_lower = message.lower()
+    menu_keywords = ["menu", "what do you have", "what's available", "price",
+                      "how much", "cost", "options"]
+    return any(kw in msg_lower for kw in menu_keywords)
+
+
 def looks_like_an_order(message: str) -> bool:
     """Check if this message sounds like the customer is ordering, not just
     asking a question (e.g. about price or the menu)."""
@@ -199,7 +209,12 @@ tools = [
         "type": "function",
         "function": {
             "name": "get_menu",
-            "description": "Get the full restaurant menu with prices.",
+            "description": "Get the full restaurant menu with real, current prices. "
+                            "You MUST call this tool any time the customer asks about "
+                            "the menu, what's available, or any item's price. NEVER "
+                            "guess, recall from memory, or make up menu items or "
+                            "prices — you do not actually know them without calling "
+                            "this tool. All prices are in PKR, not dollars.",
             "parameters": {"type": "object", "properties": {}, "required": []}
         }
     },
@@ -268,6 +283,15 @@ def run_agent_turn(session_id: str, user_message: str, conversation_history: lis
     }
 
     messages = [system_prompt] + conversation_history
+
+    # --- Deterministic menu injection: guarantee correct menu answers ---
+    # If this looks like a menu/price question, inject the REAL menu as a
+    # system note so the model has no way to hallucinate wrong prices —
+    # it's looking right at the real data, not relying on memory or a tool call.
+    if looks_like_menu_question(user_message):
+        menu_note = f"[System note: here is the REAL, current menu — use ONLY this, do not make up other items or prices:\n{get_menu()}]"
+        messages.append({"role": "system", "content": menu_note})
+        print("  [DEBUG: injected real menu into context for this turn]")
 
     # --- Deterministic pre-parse: catch every item BEFORE the LLM sees the
     # message, so nothing gets silently dropped due to model unreliability ---
