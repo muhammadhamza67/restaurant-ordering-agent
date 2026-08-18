@@ -1,0 +1,26 @@
+[
+  {
+    "session_id": "test_customer_1",
+    "customer_name": "Ahmed",
+    "phone_number": "03001234567",
+    "items": [
+      {
+        "item": "zinger burger",
+        "qty": 2,
+        "price": 450
+      },
+      {
+        "item": "fries",
+        "qty": 1,
+        "price": 200
+      },
+      {
+        "item": "coke (500ml)",
+        "qty": 1,
+        "price": 100
+      }
+    ],
+    "total": 1200,
+    "timestamp": "2026-08-18T10:20:07.983877"
+  }
+]
