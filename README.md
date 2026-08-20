@@ -4,14 +4,14 @@ An AI agent that takes real food orders through natural conversation — built t
 
 ## The business pitch
 
-A customer opens a chat (WhatsApp-style, web, or app) and orders naturally — "I'll have 2 zinger burgers and a fries" — the same way they'd talk to a waiter. The agent:
+A customer messages naturally — over **WhatsApp**, a website chat, or an app — "I'll have 2 zinger burgers and a fries" — the same way they'd talk to a waiter. The agent:
 
 - Understands the order, item by item, even when multiple items are mentioned in one message
 - Tracks a running cart across the whole conversation
-- Answers questions about the menu or the current total
+- Answers menu and price questions accurately — never invents fake items or prices
 - **Places a real, saved order** once the customer confirms — a structured record with their name, phone number, exact items, and total, ready for restaurant staff to fulfill
 
-**The pitch to a restaurant owner:** your staff no longer needs to personally take every order by phone or WhatsApp. The AI handles that conversation end-to-end, 24/7, and hands staff a clean, already-correct order to prepare — not a chat log they have to re-read and interpret.
+**The pitch to a restaurant owner:** your staff no longer needs to personally take every order by phone or WhatsApp. The AI handles that conversation end-to-end, 24/7, on the exact WhatsApp number customers already message, and hands staff a clean, already-correct order to prepare — not a chat log they have to re-read and interpret.
 
 ## Why this is a different kind of agent than a RAG chatbot
 
@@ -32,8 +32,13 @@ This was fixed with **defense in depth**, not just a better prompt:
 2. **A multi-round tool-calling loop**, so the AI can take multiple sequential actions in one turn if needed, rather than being cut off after a single tool call.
 3. **A code-level duplicate guard** — discovered that even after removing a tool from what's offered to the model, this local model sometimes tried calling it anyway. Rather than trusting that restriction alone, the code also explicitly blocks and no-ops any duplicate `add_to_cart` call for items the pre-parser already handled.
 4. **Defensive argument handling** — tool calls with missing or malformed arguments (e.g. a missing quantity) default sensibly instead of crashing the whole request.
+5. **Deterministic ground-truth injection for menu/price questions** — a separate but related bug: the model was found to *fabricate* a fake menu with wrong items and prices instead of calling the real `get_menu` tool. Fixed the same way as the ordering bug — the real menu is now injected directly into context whenever a menu/price question is detected, so the model has no way to answer from a hallucinated memory instead of the real data.
 
 This was verified by checking the actual saved order data (`restaurant_orders.json`), not just trusting the AI's own conversational summary of what it had done — the two didn't always match, which was itself an important finding.
+
+## WhatsApp integration
+
+The same agent is connected to WhatsApp via a Twilio webhook (`whatsapp_server.py`). No agent logic changes for this — WhatsApp is just a new "front door" to the same core agent, with the same reliability guarantees. Verified working end-to-end with a simulated Twilio-format webhook request, correctly triggering the menu safeguard and returning a properly formatted reply. Connecting a live phone number is a matter of the business owner completing their own Twilio/WhatsApp Business account setup — a standard step on their end, not a code change.
 
 ## Architecture
 
